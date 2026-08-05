@@ -100,11 +100,14 @@ type Opts = {
     provider?: HostPluginApi["state"]["provider"]
     path?: HostPluginApi["state"]["path"]
     vcs?: HostPluginApi["state"]["vcs"]
+    selectedModel?: HostPluginApi["state"]["selectedModel"]
     session?: Partial<HostPluginApi["state"]["session"]>
     part?: HostPluginApi["state"]["part"]
     lsp?: HostPluginApi["state"]["lsp"]
     mcp?: HostPluginApi["state"]["mcp"]
   }
+  goUsage?: () => Promise<HostPluginApi["goUsage"] extends () => Promise<infer Value> ? Value : never>
+  goSession?: () => Promise<HostPluginApi["goSession"] extends () => Promise<infer Value> ? Value : never>
   theme?: {
     selected?: string
     has?: HostPluginApi["theme"]["has"]
@@ -312,6 +315,9 @@ export function createTuiPluginApi(opts: Opts = {}): HostPluginApi {
       get vcs() {
         return opts.state?.vcs
       },
+      selectedModel() {
+        return opts.state?.selectedModel?.()
+      },
       session: {
         count: opts.state?.session?.count ?? (() => 0),
         get: opts.state?.session?.get ?? (() => undefined),
@@ -326,6 +332,8 @@ export function createTuiPluginApi(opts: Opts = {}): HostPluginApi {
       lsp: opts.state?.lsp ?? (() => []),
       mcp: opts.state?.mcp ?? (() => []),
     },
+    goUsage: async () => opts.goUsage?.(),
+    goSession: async () => opts.goSession?.() ?? false,
     theme: {
       get current() {
         return opts.theme?.current ?? themeCurrent()

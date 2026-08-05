@@ -6,6 +6,8 @@ import { FSUtil } from "@opencode-ai/core/fs-util"
 import { Database } from "@opencode-ai/core/database/database"
 import { Auth } from "@/auth"
 import { Account } from "@/account/account"
+import { BrowserSession } from "@/browser-session"
+import { BrowserDiscovery } from "@/browser-discovery"
 import { Config } from "@/config/config"
 import { Git } from "@/git"
 import { Ripgrep } from "@opencode-ai/core/ripgrep"
@@ -62,6 +64,8 @@ export const AppLayer = AppNodeBuilderV1.build(
     Database.node,
     Auth.node,
     Account.node,
+    BrowserSession.node,
+    BrowserDiscovery.node,
     Config.node,
     Git.node,
     Storage.node,

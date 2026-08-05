@@ -29,11 +29,18 @@ export function todayTimeOrDateTime(input: number): string {
 
 export function number(num: number): string {
   if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + "M"
+    return compact(num / 1000000) + "M"
   } else if (num >= 1000) {
-    return (num / 1000).toFixed(1) + "K"
+    const value = num / 1000
+    if (value >= 999.95) return "1M"
+    return compact(value) + "k"
   }
   return num.toString()
+}
+
+function compact(value: number) {
+  const rounded = Math.round(value * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }
 
 export function duration(input: number) {

@@ -5,6 +5,7 @@ import type { useRoute } from "../context/route"
 import type { useSDK } from "../context/sdk"
 import type { useSync } from "../context/sync"
 import type { useTheme } from "../context/theme"
+import type { useLocal } from "../context/local"
 import { Dialog as DialogUI, type useDialog } from "../ui/dialog"
 import type { useOpencodeKeymap } from "../keymap"
 import type { useKV } from "../context/kv"
@@ -32,6 +33,7 @@ type Input = {
   sdk: ReturnType<typeof useSDK>
   sync: ReturnType<typeof useSync>
   theme: ReturnType<typeof useTheme>
+  local: ReturnType<typeof useLocal>
   toast: ReturnType<typeof useToast>
   renderer: TuiPluginApi["renderer"]
   attention: TuiPluginApi["attention"]
@@ -95,7 +97,10 @@ function mapOptionCb<Value>(cb?: (item: TuiDialogSelectOption<Value>) => void) {
   return (item: SelectOption<Value>) => cb(pickOption(item))
 }
 
-function stateApi(sync: ReturnType<typeof useSync>): TuiPluginApi["state"] {
+function stateApi(
+  sync: ReturnType<typeof useSync>,
+  local: ReturnType<typeof useLocal>,
+): TuiPluginApi["state"] {
   return {
     get ready() {
       return sync.ready
@@ -115,6 +120,9 @@ function stateApi(sync: ReturnType<typeof useSync>): TuiPluginApi["state"] {
         branch: sync.data.vcs.branch,
         default_branch: sync.data.vcs.default_branch,
       }
+    },
+    selectedModel() {
+      return local.model.current()
     },
     session: {
       count() {
@@ -297,7 +305,13 @@ export function createTuiApiAdapters(input: Input): Omit<TuiPluginApi, "lifecycl
         return input.kv.ready
       },
     },
-    state: stateApi(input.sync),
+    state: stateApi(input.sync, input.local),
+    async goUsage() {
+      throw new Error("goUsage is only available in plugin context")
+    },
+    async goSession() {
+      throw new Error("goSession is only available in plugin context")
+    },
     get client() {
       return input.sdk.client
     },

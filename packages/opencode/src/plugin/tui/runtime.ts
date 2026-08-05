@@ -41,7 +41,10 @@ import { ConfigPlugin } from "@/config/plugin"
 import { ConfigPluginV1 } from "@opencode-ai/core/v1/config/plugin"
 import { createCommandShim } from "@opencode-ai/tui/plugin/command-shim"
 import { RuntimeFlags } from "@/effect/runtime-flags"
-import { Effect } from "effect"
+import { Context, Effect, Exit, Layer, Option, Scope } from "effect"
+import { memoMap } from "@opencode-ai/core/effect/memo-map"
+import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { GoUsage } from "@/provider/go/usage"
 import { createPluginRuntime, type PluginRuntime, type TuiPluginHost } from "@opencode-ai/tui/plugin/runtime"
 
 ensureRuntimePluginSupport({ additional: keymapRuntimeModules })
@@ -117,6 +120,8 @@ type RuntimeState = {
   plugins_by_id: Map<string, PluginEntry>
   pending: Map<string, ConfigPlugin.Origin>
   dispose_timeout_ms: number
+  usage: GoUsage.Interface | undefined
+  usage_scope: Scope.Scope | undefined
 }
 
 const DISPOSE_TIMEOUT_MS = 5000
@@ -622,6 +627,17 @@ function pluginApi(runtime: RuntimeState, plugin: PluginEntry, scope: PluginScop
     tuiConfig: api.tuiConfig,
     kv: api.kv,
     state: api.state,
+    goUsage: () => {
+      if (!runtime.usage) return Promise.resolve(undefined)
+      return Effect.runPromise(Effect.scoped(runtime.usage.get())).then(
+        (result) => Option.getOrUndefined(result),
+        () => undefined,
+      )
+    },
+    goSession: () => {
+      if (!runtime.usage) return Promise.resolve(false)
+      return Effect.runPromise(Effect.scoped(runtime.usage.hasSession())).catch(() => false)
+    },
     theme,
     get client() {
       return api.client
@@ -1034,6 +1050,9 @@ export async function dispose() {
   const state = runtime
   runtime = undefined
   if (!state) return
+  if (state.usage_scope) {
+    await Effect.runPromise(Scope.close(state.usage_scope, Exit.void)).catch(() => {})
+  }
   const queue = [...state.plugins].reverse()
   for (const plugin of queue) {
     await deactivatePluginEntry(state, plugin, false).catch((error) =>
@@ -1058,6 +1077,28 @@ async function load(input: {
   const { api, config } = input
   const cwd = process.cwd()
   const slots = input.runtime.setupSlots(api)
+  // Resolve GoUsage inside a persistent scope so its Database/HTTP resources
+  // stay alive for the lifetime of the plugin runtime. A temporary scope would
+  // close the DB connection immediately after resolution, making every later
+  // `api.goUsage()` call fail. The scope is created here and closed only in
+  // `dispose()` (or on build failure, so nothing leaks).
+  let usageScope: Scope.Scope | undefined
+  const usage = await Effect.runPromise(
+    Effect.gen(function* () {
+      const scope = yield* Scope.make()
+      usageScope = scope
+      return yield* Layer.buildWithMemoMap(AppNodeBuilder.build(GoUsage.node), memoMap, scope).pipe(
+        Effect.map((ctx) => Context.get(ctx, GoUsage.Service)),
+      )
+    }),
+  ).catch((error) => {
+    // The scope owns the GoUsage layer's resources (including its SQLite
+    // connection). If the build failed partway, close it so no resources leak.
+    const scope = usageScope
+    usageScope = undefined
+    if (scope) void Effect.runPromise(Scope.close(scope, Exit.void)).catch(() => {})
+    return undefined
+  })
   const next: RuntimeState = {
     directory: cwd,
     api,
@@ -1068,6 +1109,8 @@ async function load(input: {
     plugins_by_id: new Map(),
     pending: new Map(),
     dispose_timeout_ms: input.disposeTimeoutMs ?? DISPOSE_TIMEOUT_MS,
+    usage,
+    usage_scope: usageScope,
   }
   runtime = next
   next.view.update({

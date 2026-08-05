@@ -3,6 +3,7 @@ import { Duration, Effect, Match, Option } from "effect"
 import { UI } from "../ui"
 import { Account } from "@/account/account"
 import { AccountID, OrgID, PollExpired, type PollResult, type AccountError } from "@/account/schema"
+import { BrowserSession } from "@/browser-session"
 import { effectCmd } from "../effect-cmd"
 import * as Prompt from "../effect/prompt"
 import open from "open"
@@ -234,6 +235,54 @@ export const OpenCommand = effectCmd({
   }),
 })
 
+export const ImportCookieCommand = effectCmd({
+  command: "import-cookie",
+  describe: false,
+  instance: false,
+  builder: (yargs) =>
+    yargs.options({
+      cookie: {
+        describe: "the browser `auth` cookie (the full `auth=...` value)",
+        type: "string",
+        demandOption: true,
+      },
+      server: {
+        describe: "console web server the cookie belongs to",
+        type: "string",
+        default: "https://opencode.ai",
+      },
+      workspace: {
+        describe: "console workspace id (from the dashboard URL); required for the Go usage panel",
+        type: "string",
+        demandOption: true,
+      },
+    }),
+  handler: Effect.fn("Cli.account.importCookie")(function* (args) {
+    const browser = yield* BrowserSession.Service
+    yield* browser.importCookie({ serverUrl: args.server, cookie: args.cookie, workspaceId: args.workspace }).pipe(
+      Effect.orDie,
+    )
+    UI.empty()
+    UI.println(UI.Style.TEXT_SUCCESS + "Imported OpenCode browser session" + UI.Style.TEXT_NORMAL)
+    UI.println(dim(args.server))
+    UI.println(dim(`workspace: ${args.workspace}`))
+
+    const check = yield* browser.diagnose(args.workspace).pipe(Effect.orDie)
+    if (!check.ok) {
+      UI.println(UI.Style.TEXT_DANGER + "Usage check failed" + UI.Style.TEXT_NORMAL)
+      UI.println(dim(check.message))
+      UI.println(dim("The cookie is invalid or expired, or the workspace id is wrong."))
+      UI.println(dim("Re-copy the `auth` cookie from the browser and try again."))
+    } else {
+      UI.println(
+        UI.Style.TEXT_SUCCESS +
+          `Usage: rolling ${check.usage.rollingUsage.usagePercent}% · weekly ${check.usage.weeklyUsage.usagePercent}% · monthly ${check.usage.monthlyUsage.usagePercent}%` +
+          UI.Style.TEXT_NORMAL,
+      )
+    }
+  }),
+})
+
 export const ConsoleCommand = cmd({
   command: "console",
   describe: false,
@@ -258,6 +307,10 @@ export const ConsoleCommand = cmd({
       .command({
         ...OpenCommand,
         describe: "open active console account",
+      })
+      .command({
+        ...ImportCookieCommand,
+        describe: "import a browser session cookie for OpenCode Go usage",
       })
       .demandCommand(),
   async handler() {},

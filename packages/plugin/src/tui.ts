@@ -372,6 +372,12 @@ export type TuiKV = {
   readonly ready: boolean
 }
 
+export type TuiSelectedModel = {
+  providerID: string
+  modelID: string
+  variant?: string
+}
+
 export type TuiState = {
   readonly ready: boolean
   readonly config: SdkConfig
@@ -383,6 +389,7 @@ export type TuiState = {
     directory: string
   }
   readonly vcs: { branch?: string; default_branch?: string } | undefined
+  selectedModel: () => TuiSelectedModel | undefined
   session: {
     count: () => number
     get: (sessionID: string) => Session | undefined
@@ -435,6 +442,17 @@ type Frozen<Value> = Value extends (...args: never[]) => unknown
     : Value extends object
       ? { readonly [Key in keyof Value]: Frozen<Value[Key]> }
       : Value
+
+export type TuiGoUsage = {
+  plan: string
+  rollingUsed: number
+  rollingLimit: number
+  weeklyUsed: number
+  weeklyLimit: number
+  monthlyUsed: number
+  monthlyLimit: number
+  resetTime: number
+}
 
 export type TuiSidebarMcpItem = {
   name: string
@@ -610,6 +628,8 @@ export type TuiPluginApi = {
   readonly tuiConfig: Frozen<TuiConfigView>
   kv: TuiKV
   state: TuiState
+  goUsage: () => Promise<TuiGoUsage | undefined>
+  goSession: () => Promise<boolean>
   theme: TuiTheme
   client: OpencodeClient
   event: TuiEventBus
