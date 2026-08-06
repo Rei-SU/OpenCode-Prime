@@ -26,6 +26,9 @@ export const UPDATE_REPO = "Rei-SU/opencode-prime"
 export const Event = InstallationEvent
 
 export function getReleaseType(current: string, latest: string): ReleaseType {
+  // opencode-prime versions carry a `.P` suffix (e.g. `1.18.14.P.1`), which is
+  // not valid semver. Degrade to "patch" so the auto-update check never throws.
+  if (!semver.valid(current) || !semver.valid(latest)) return "patch"
   const currMajor = semver.major(current)
   const currMinor = semver.minor(current)
   const newMajor = semver.major(latest)

@@ -284,5 +284,12 @@ describe("installation", () => {
       // must not crash or misclassify on our version format.
       expect(Installation.getReleaseType("0.0.0-dev-202608052319", "0.0.0-dev-202608052319")).toBe("patch")
     })
+
+    test("degrades .P prime versions to patch instead of throwing", () => {
+      // `1.18.14.P.1` is not valid semver; the comparison must not crash and
+      // must not treat a newer prime build as a downgrade.
+      expect(Installation.getReleaseType("1.18.14.P.1", "1.18.14.P.2")).toBe("patch")
+      expect(Installation.getReleaseType("1.18.14.P-dev.2026080619", "1.18.14.P-dev.2026080620")).toBe("patch")
+    })
   })
 })

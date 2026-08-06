@@ -2,7 +2,7 @@ name: prime-release
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, main]
   workflow_dispatch:
 
 permissions:
@@ -27,13 +27,26 @@ jobs:
 
       - name: Compute version
         id: version
-        run: echo "version=0.0.0-dev-$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          BASE="$(bun -e 'const p = await Bun.file("packages/opencode/package.json").json(); console.log(p.version)')"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            ESCAPED="$(printf '%s' "$BASE" | sed 's/\./\\./g')"
+            LAST="$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName --jq '.[].tagName' \
+              | grep -E "^v${ESCAPED}\.P\.[0-9]+$" \
+              | sed "s/^v${ESCAPED}\.P\.//" | sort -n | tail -n 1 || true)"
+            NEXT="$(( ${LAST:-0} + 1 ))"
+            echo "version=${BASE}.P.${NEXT}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${BASE}.P-dev.$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build OpenCode-Prime CLI
-        run: ./script/build.ts --bin-name opencode-prime --targets linux-x64,darwin-arm64,darwin-x64,win32-x64 --skip-embed-web-ui
+        run: ./script/build.ts --bin-name opencode-prime --targets linux-x64,linux-arm64,darwin-arm64,darwin-x64,win32-x64,win32-arm64 --skip-embed-web-ui
         working-directory: packages/opencode
         env:
-          OPENCODE_CHANNEL: dev
+          OPENCODE_CHANNEL: ${{ (github.ref_name == 'main' && 'latest') || 'dev' }}
           OPENCODE_VERSION: ${{ steps.version.outputs.version }}
 
       - name: Package archives
@@ -53,10 +66,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
-            --target "${{ github.sha }}" \
-            --title "OpenCode-Prime v${{ steps.version.outputs.version }}" \
-            --repo "${{ github.repository }}"
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            gh release create "v${{ steps.version.outputs.version }}" \
+              --target "${{ github.sha }}" \
+              --title "OpenCode-Prime v${{ steps.version.outputs.version }}" \
+              --generate-notes \
+              --repo "${{ github.repository }}"
+          else
+            gh release create "v${{ steps.version.outputs.version }}" \
+              --target "${{ github.sha }}" \
+              --title "OpenCode-Prime v${{ steps.version.outputs.version }}" \
+              --prerelease \
+              --generate-notes \
+              --repo "${{ github.repository }}"
+          fi
 
       - name: Upload release assets
         env:
@@ -68,12 +91,13 @@ jobs:
             --clobber \
             --repo "${{ github.repository }}"
 
-      - name: Prune old dev releases
+      - name: Prune old dev prereleases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release list --repo "${{ github.repository }}" --limit 20 \
-            | awk '{print $1}' | tail -n +6 \
+          gh release list --repo "${{ github.repository }}" --limit 100 --json tagName,prerelease \
+            --jq '.[] | select(.prerelease == true) | .tagName' \
+            | tail -n +6 \
             | while read -r tag; do
-                gh release delete "$tag" --yes --repo "${{ github.repository }}" || true
+                gh release delete "$tag" --yes --cleanup-tag --repo "${{ github.repository }}" || true
               done
