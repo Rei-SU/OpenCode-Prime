@@ -188,6 +188,19 @@ Options:
                           [string] [choices: "curl", "npm", "pnpm", "bun", "brew", "choco", "scoop"]"
 `;
 
+exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode self-update --help 1`] = `
+"opencode self-update
+
+update opencode-prime to the latest dev build from GitHub releases
+
+Options:
+  -h, --help        show help                                                              [boolean]
+  -v, --version     show version number                                                    [boolean]
+      --print-logs  print logs to stderr                                                   [boolean]
+      --log-level   log level                   [string] [choices: "DEBUG", "INFO", "WARN", "ERROR"]
+      --pure        run without external plugins                                           [boolean]"
+`;
+
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode uninstall --help 1`] = `
 "opencode uninstall
 

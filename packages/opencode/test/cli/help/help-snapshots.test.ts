@@ -51,6 +51,7 @@ const TOP_LEVEL = [
   "providers", // aliased to `auth`
   "agent",
   "upgrade",
+  "self-update",
   "uninstall",
   "serve",
   "web",

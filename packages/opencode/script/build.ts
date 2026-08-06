@@ -23,6 +23,21 @@ const sourcemapsFlag = process.argv.includes("--sourcemaps")
 const plugin = createSolidTransformPlugin()
 const skipEmbedWebUi = process.argv.includes("--skip-embed-web-ui")
 
+// Binary (and archive) prefix. Defaults to `opencode`; a fork can ship the CLI
+// under a different name (e.g. `opencode-prime`) without touching package.json.
+const binName = (() => {
+  const index = process.argv.indexOf("--bin-name")
+  return index !== -1 && process.argv[index + 1] ? process.argv[index + 1] : "opencode"
+})()
+
+// Optional target matrix filter, e.g. `--targets linux-x64,darwin-arm64,win32-x64`.
+const requestedTargets = (() => {
+  const index = process.argv.indexOf("--targets")
+  return index !== -1 && process.argv[index + 1]
+    ? new Set(process.argv[index + 1].split(",").map((item) => item.trim()))
+    : null
+})()
+
 const createEmbeddedWebUIBundle = async () => {
   console.log(`Building Web UI to embed in the binary`)
   const appDir = path.join(import.meta.dirname, "../../app")
@@ -113,26 +128,30 @@ const allTargets: {
   },
 ]
 
-const targets = singleFlag
-  ? allTargets.filter((item) => {
-      if (item.os !== process.platform || item.arch !== process.arch) {
-        return false
-      }
+const targets = requestedTargets
+  ? allTargets.filter(
+      (item) => item.abi === undefined && item.avx2 !== false && requestedTargets.has(`${item.os}-${item.arch}`),
+    )
+  : singleFlag
+    ? allTargets.filter((item) => {
+        if (item.os !== process.platform || item.arch !== process.arch) {
+          return false
+        }
 
-      // When building for the current platform, prefer a single native binary by default.
-      // Baseline binaries require additional Bun artifacts and can be flaky to download.
-      if (item.avx2 === false) {
-        return baselineFlag
-      }
+        // When building for the current platform, prefer a single native binary by default.
+        // Baseline binaries require additional Bun artifacts and can be flaky to download.
+        if (item.avx2 === false) {
+          return baselineFlag
+        }
 
-      // also skip abi-specific builds for the same reason
-      if (item.abi !== undefined) {
-        return false
-      }
+        // also skip abi-specific builds for the same reason
+        if (item.abi !== undefined) {
+          return false
+        }
 
-      return true
-    })
-  : allTargets
+        return true
+      })
+    : allTargets
 
 await $`rm -rf dist`
 
@@ -144,7 +163,7 @@ if (!skipInstall) {
 }
 for (const item of targets) {
   const name = [
-    pkg.name,
+    binName,
     // changing to win32 flags npm for some reason
     item.os === "win32" ? "windows" : item.os,
     item.arch,
@@ -174,8 +193,10 @@ for (const item of targets) {
       autoloadDotenv: false,
       autoloadTsconfig: true,
       autoloadPackageJson: true,
-      target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/opencode`,
+      target: name.replace(binName, "bun") as any,
+      // Bun appends `.exe` itself for win32 targets, so the outfile has no
+      // extension; the smoke test below accounts for it.
+      outfile: `dist/${name}/bin/${binName}`,
       execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },
@@ -203,7 +224,7 @@ for (const item of targets) {
 
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
-    const binaryPath = `dist/${name}/bin/opencode`
+    const binaryPath = `dist/${name}/bin/${binName}${item.os === "win32" ? ".exe" : ""}`
     console.log(`Running smoke test: ${binaryPath} --version`)
     try {
       const versionOutput = await $`${binaryPath} --version`.text()
