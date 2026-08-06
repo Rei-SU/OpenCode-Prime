@@ -1,129 +1,105 @@
 <p align="center">
-  <a href="https://opencode.ai">
+  <a href="https://github.com/Rei-SU/OpenCode-Prime">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode logo">
+      <img src="packages/console/app/src/asset/logo-ornate-light.svg" alt="OpenCode-Prime logo">
     </picture>
   </a>
 </p>
-<p align="center">The open source AI coding agent.</p>
+<p align="center">The open source AI coding agent, but with receipts.</p>
 <p align="center">
+  <a href="https://github.com/Rei-SU/OpenCode-Prime"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Rei--SU/OpenCode--Prime-000?style=flat-square&logo=github" /></a>
+  <a href="https://github.com/Rei-SU/OpenCode-Prime/releases"><img alt="Releases" src="https://img.shields.io/github/v/release/Rei-SU/OpenCode-Prime?style=flat-square&label=release" /></a>
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
-</p>
-
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh.md">简体中文</a> |
-  <a href="README.zht.md">繁體中文</a> |
-  <a href="README.ko.md">한국어</a> |
-  <a href="README.de.md">Deutsch</a> |
-  <a href="README.es.md">Español</a> |
-  <a href="README.fr.md">Français</a> |
-  <a href="README.it.md">Italiano</a> |
-  <a href="README.da.md">Dansk</a> |
-  <a href="README.ja.md">日本語</a> |
-  <a href="README.pl.md">Polski</a> |
-  <a href="README.ru.md">Русский</a> |
-  <a href="README.bs.md">Bosanski</a> |
-  <a href="README.ar.md">العربية</a> |
-  <a href="README.no.md">Norsk</a> |
-  <a href="README.br.md">Português (Brasil)</a> |
-  <a href="README.th.md">ไทย</a> |
-  <a href="README.tr.md">Türkçe</a> |
-  <a href="README.uk.md">Українська</a> |
-  <a href="README.bn.md">বাংলা</a> |
-  <a href="README.gr.md">Ελληνικά</a> |
-  <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---
 
-### Installation
+OpenCode-Prime is [OpenCode](https://github.com/sst/opencode) — the open source
+AI coding agent you already know — with a few quality-of-life upgrades bolted on
+for people who actually live in their terminal.
+
+It does everything OpenCode does: agents, tools, MCP, every provider under the
+sun, plugins. Same engine, same TUI, same vibe. Then it adds the stuff that was
+missing.
+
+### What's different
+
+- **Usage you can actually see.** A plan-aware sidebar that figures out whether
+  you're on the Go, Zen, or Free plan and shows your **rolling, weekly, and
+  monthly** usage with live data straight from your OpenCode account. No more
+  refreshing the dashboard mid-session to check if you're about to hit a wall.
+- **Context window, at a glance.** A clean progress bar showing your current
+  tokens against the model's limit, plus how much the session has cost you
+  (hidden when it's a flat \$0.00, because nobody needs that energy).
+- **No more duplicated info.** Context and cost used to be crammed into the
+  prompt bar and the subagent footer *and* the sidebar — the same three numbers
+  in three places. Now it lives in one tidy spot.
+- **Self-updating.** `opencode-prime self-update` swaps in the latest build
+  safely on Linux, macOS, and Windows. No package managers, no `npm` globals,
+  no chore.
+
+### Install
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
-
-# Package managers
-npm i -g opencode-ai@latest        # or bun/pnpm/yarn
-scoop install opencode             # Windows
-choco install opencode             # Windows
-brew install anomalyco/tap/opencode # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-bin               # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev branch
+curl -fsSL https://raw.githubusercontent.com/Rei-SU/OpenCode-Prime/dev/install.sh | bash
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+On Windows, fire up PowerShell:
 
-### Desktop App (BETA)
+```powershell
+irm https://raw.githubusercontent.com/Rei-SU/OpenCode-Prime/dev/install.ps1 | iex
+```
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
-
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-windows-x64.exe` |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+That's it. `opencode-prime` lands in `~/.opencode-prime/bin`, gets added to your
+PATH, and you're off. When you want the freshest build, just:
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
-# Windows (Scoop)
-scoop bucket add extras; scoop install extras/opencode-desktop
+opencode-prime self-update
 ```
 
-#### Installation Directory
+Prefer to run from source? Clone the repo, `bun install`, then `bun dev`.
 
-The install script respects the following priority order for the installation path:
+> [!NOTE]
+> The usage panel reads your session from your local browser's cookie store —
+> kept **in memory only**, never written to disk, only ever sent over HTTPS.
+> Can't find it automatically? Wire it up once with
+> `opencode-prime console import-cookie --cookie <auth> --workspace <id>`.
 
-1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
-2. `$XDG_BIN_DIR` - XDG Base Directory Specification compliant path
-3. `$HOME/bin` - Standard user binary directory (if it exists or can be created)
-4. `$HOME/.opencode/bin` - Default fallback
+### Everything OpenCode already does
 
-```bash
-# Examples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
-```
+OpenCode-Prime inherits the whole OpenCode feature set, untouched:
 
-### Agents
-
-OpenCode includes two built-in agents you can switch between with the `Tab` key.
-
-- **build** - Default, full-access agent for development work
-- **plan** - Read-only agent for analysis and code exploration
-  - Denies file edits by default
-  - Asks permission before running bash commands
-  - Ideal for exploring unfamiliar codebases or planning changes
-
-Also included is a **general** subagent for complex searches and multistep tasks.
-This is used internally and can be invoked using `@general` in messages.
-
-Learn more about [agents](https://opencode.ai/docs/agents).
+- **Agents** — switch between `build` and `plan` with `Tab`; spin up `@general`
+  subagents for gnarly searches
+- **Models** — BYO key for OpenAI, Anthropic, Google, Groq, or run open models
+  locally; OpenCode Go/Zen/Free built right in
+- **Tools** — file editing, bash, ripgrep, web search, and the rest, behind a
+  sane permission system
+- **MCP** — plug in any Model Context Protocol server you like
+- **Plugins** — extend the TUI, add commands, themes, keybindings, the works
+- **Everywhere** — a terminal TUI, a `--server` mode for your editor, and
+  integrations with VS Code and JetBrains
 
 ### Documentation
 
-For more info on how to configure OpenCode, [**head over to our docs**](https://opencode.ai/docs).
+For the full rundown on config, agents, permissions, and the rest, [check the
+docs](https://opencode.ai/docs).
 
 ### Contributing
 
-If you're interested in contributing to OpenCode, please read our [contributing docs](./CONTRIBUTING.md) before submitting a pull request.
+Found a bug? Have an idea for the next quality-of-life upgrade? PRs are very
+welcome — read the [contributing guide](./CONTRIBUTING.md) first.
 
-### Building on OpenCode
+### The fine print
 
-If you are working on a project that's related to OpenCode and is using "opencode" as part of its name, for example "opencode-dashboard" or "opencode-mobile", please add a note to your README to clarify that it is not built by the OpenCode team and is not affiliated with us in any way.
+OpenCode-Prime is an independent fork of OpenCode. It is not built by the
+OpenCode team and isn't affiliated with them.
 
 ---
 
-**Join our community** [Discord](https://discord.gg/opencode) | [X.com](https://x.com/opencode)
+**Join the community** [Discord](https://discord.gg/opencode) · built on
+[OpenCode](https://github.com/sst/opencode)
