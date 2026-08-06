@@ -746,7 +746,7 @@ export const McpDebugCommand = effectCmd({
             params: {
               protocolVersion: LATEST_PROTOCOL_VERSION,
               capabilities: {},
-              clientInfo: { name: "opencode-debug", version: InstallationVersion },
+              clientInfo: { name: "opencode-prime-debug", version: InstallationVersion },
             },
             id: 1,
           }),
@@ -790,7 +790,7 @@ export const McpDebugCommand = effectCmd({
 
           try {
             const client = new Client({
-              name: "opencode-debug",
+              name: "opencode-prime-debug",
               version: InstallationVersion,
             })
             await client.connect(transport)

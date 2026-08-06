@@ -94,17 +94,17 @@ export function make(input: {
   const initialize = Effect.fn("ACP.initialize")(function* (params: InitializeRequest) {
     const started = performance.now()
     const authMethod: AuthMethod = {
-      description: "Run `opencode auth login` in the terminal",
-      name: "Login with opencode",
+      description: "Run `opencode-prime auth login` in the terminal",
+      name: "Login with opencode-prime",
       id: AuthMethodID,
     }
 
     if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {
       authMethod._meta = {
         "terminal-auth": {
-          command: "opencode",
+          command: "opencode-prime",
           args: ["auth", "login"],
-          label: "OpenCode Login",
+          label: "opencode-prime Login",
         },
       }
     }
