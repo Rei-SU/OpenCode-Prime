@@ -14,7 +14,7 @@
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
 </p>
 
-[![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
+<img src="packages/web/src/assets/lander/screenshot.png" alt="OpenCode Terminal UI">
 
 ---
 
