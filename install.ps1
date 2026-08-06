@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $App = "opencode-prime"
-$Repo = if ($env:OPENCODE_PRIME_REPO) { $env:OPENCODE_PRIME_REPO } else { "Rei-SU/OpenCode-Prime" }
+$Repo = if ($env:OPENCODE_PRIME_REPO) { $env:OPENCODE_PRIME_REPO } else { "Rei-SU/opencode-prime" }
 $Version = $env:VERSION
 $Tag = $env:OPENCODE_PRIME_TAG
 

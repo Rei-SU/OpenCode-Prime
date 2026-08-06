@@ -21,7 +21,7 @@ export type ReleaseType = "patch" | "minor" | "major"
 
 // The GitHub repository this build publishes updates to. The fork ships from
 // its own repository so the updater never compares against upstream opencode.
-export const UPDATE_REPO = "Rei-SU/OpenCode-Prime"
+export const UPDATE_REPO = "Rei-SU/opencode-prime"
 
 export const Event = InstallationEvent
 

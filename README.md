@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/Rei-SU/OpenCode-Prime">
+  <a href="https://github.com/Rei-SU/opencode-prime">
     <picture>
       <source srcset="packages/console/app/src/asset/logo-ornate-dark.svg" media="(prefers-color-scheme: dark)">
       <source srcset="packages/console/app/src/asset/logo-ornate-light.svg" media="(prefers-color-scheme: light)">
@@ -9,8 +9,8 @@
 </p>
 <p align="center">The open source AI coding agent, but with receipts.</p>
 <p align="center">
-  <a href="https://github.com/Rei-SU/OpenCode-Prime"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Rei--SU/OpenCode--Prime-000?style=flat-square&logo=github" /></a>
-  <a href="https://github.com/Rei-SU/OpenCode-Prime/releases"><img alt="Releases" src="https://img.shields.io/github/v/release/Rei-SU/OpenCode-Prime?style=flat-square&label=release" /></a>
+  <a href="https://github.com/Rei-SU/opencode-prime"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-Rei--SU/opencode--prime-000?style=flat-square&logo=github" /></a>
+  <a href="https://github.com/Rei-SU/opencode-prime/releases"><img alt="Releases" src="https://img.shields.io/github/v/release/Rei-SU/opencode-prime?style=flat-square&label=release" /></a>
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
 </p>
 
@@ -45,13 +45,13 @@ missing.
 ### Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Rei-SU/OpenCode-Prime/dev/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Rei-SU/opencode-prime/dev/install.sh | bash
 ```
 
 On Windows, fire up PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/Rei-SU/OpenCode-Prime/dev/install.ps1 | iex
+irm https://raw.githubusercontent.com/Rei-SU/opencode-prime/dev/install.ps1 | iex
 ```
 
 That's it. `opencode-prime` lands in `~/.opencode-prime/bin`, gets added to your

@@ -98,7 +98,7 @@ describe("installation", () => {
         const result = yield* Installation.use.latest("curl")
         expect(result).toBe("0.0.0-dev-202608052319")
         expect(primeCalls).toContain(
-          "https://api.github.com/repos/Rei-SU/OpenCode-Prime/releases/latest",
+          "https://api.github.com/repos/Rei-SU/opencode-prime/releases/latest",
         )
       }),
     )

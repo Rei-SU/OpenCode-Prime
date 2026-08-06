@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP=opencode-prime
-REPO="${OPENCODE_PRIME_REPO:-Rei-SU/OpenCode-Prime}"
+REPO="${OPENCODE_PRIME_REPO:-Rei-SU/opencode-prime}"
 VERSION="${VERSION:-}"
 TAG="${OPENCODE_PRIME_TAG:-}"
 
@@ -24,7 +24,7 @@ Options:
     -t, --tag <tag>         Exact release tag to download (overrides --version)
 
 Examples:
-    curl -fsSL https://raw.githubusercontent.com/Rei-SU/OpenCode-Prime/dev/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/Rei-SU/opencode-prime/dev/install.sh | bash
 EOF
 }
 
@@ -76,7 +76,7 @@ fi
 
 if [[ "$os" == "windows" ]]; then
     echo -e "${RED}This script is for Linux/macOS. On Windows use:${NC}"
-    echo -e "  irm https://raw.githubusercontent.com/Rei-SU/OpenCode-Prime/dev/install.ps1 | iex"
+    echo -e "  irm https://raw.githubusercontent.com/Rei-SU/opencode-prime/dev/install.ps1 | iex"
     exit 1
 fi
 
