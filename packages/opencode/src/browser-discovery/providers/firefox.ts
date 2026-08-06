@@ -52,21 +52,26 @@ async function readProfile(profile: string): Promise<BrowserCookie | undefined> 
       )
       .all() as Array<Record<string, unknown>>
     const sdrKey = encrypted ? readSdrKey(profile) : undefined
-    for (const row of rows) {
-      const host = row["host"]
-      if (host !== "opencode.ai" && host !== ".opencode.ai") continue
-      const value = encrypted
-        ? decryptFirefoxValue(row["encrypted_value"] as Uint8Array, sdrKey)
-        : String(row["value"] ?? "")
-      if (!value) continue
-      return {
-        browser: "firefox" as const,
-        profile: path.basename(profile),
-        cookie: `auth=${value}`,
-        modified: microToEpochMs(Number(row["lastAccessed"] ?? 0)),
+    try {
+      for (const row of rows) {
+        const host = row["host"]
+        if (host !== "opencode.ai" && host !== ".opencode.ai") continue
+        const value = encrypted
+          ? decryptFirefoxValue(row["encrypted_value"] as Uint8Array, sdrKey)
+          : String(row["value"] ?? "")
+        if (!value) continue
+        return {
+          browser: "firefox" as const,
+          profile: path.basename(profile),
+          cookie: `auth=${value}`,
+          modified: microToEpochMs(Number(row["lastAccessed"] ?? 0)),
+        }
       }
+      return undefined
+    } finally {
+      // The profile's SDR key is sensitive: zero it once discovery is done.
+      sdrKey?.fill(0)
     }
-    return undefined
   } finally {
     db.close()
   }

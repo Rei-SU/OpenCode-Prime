@@ -1,6 +1,15 @@
 import { describe, expect, test } from "bun:test"
+import { Effect } from "effect"
+import { FetchHttpClient } from "effect/unstable/http"
+import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 
-import { assetUrls, decodeServerFunctionBody, replayUrl, serverFunctionId } from "../../src/browser-session/transport"
+import {
+  assertHttps,
+  assetUrls,
+  decodeServerFunctionBody,
+  replayUrl,
+  serverFunctionId,
+} from "../../src/browser-session/transport"
 
 const USAGE_BODY = `;0x00000149;((self.$R=self.$R||{})["server-fn:0"]=[],($R=>$R[0]={mine:!0,useBalance:!1,region:$R[1]=["us","eu","sg","cn"],rollingUsage:$R[2]={status:"ok",resetInSec:10766,usagePercent:3},weeklyUsage:$R[3]={status:"ok",resetInSec:444242,usagePercent:9},monthlyUsage:$R[4]={status:"ok",resetInSec:2421543,usagePercent:34}})($R["server-fn:0"]))`
 
@@ -62,5 +71,56 @@ describe("browser-session transport", () => {
       `<script src="https://cdn.example.com/remote.js"></script>`,
     ].join("")
     expect(assetUrls(html)).toEqual(["/_build/assets/app.js", "/_build/assets/lib.js", "https://cdn.example.com/remote.js"])
+  })
+})
+
+describe("browser-session transport security", () => {
+  test("allows https servers for cookie transmission", async () => {
+    const result = await Effect.runPromise(assertHttps("https://opencode.ai"))
+    expect(result).toBeUndefined()
+  })
+
+  test("rejects plaintext servers for cookie transmission", async () => {
+    const failed = await Effect.runPromise(Effect.isFailure(assertHttps("http://opencode.ai")))
+    expect(failed).toBe(true)
+  })
+
+  test("rejects malformed server urls", async () => {
+    const failed = await Effect.runPromise(Effect.isFailure(assertHttps("not a url")))
+    expect(failed).toBe(true)
+  })
+
+  test("does not forward the cookie to a different origin on redirect", async () => {
+    const received: string[] = []
+    const target = Bun.serve({
+      port: 0,
+      fetch(request) {
+        received.push(request.headers.get("cookie") ?? "")
+        return new Response("ok", { status: 200 })
+      },
+    })
+    const redirector = Bun.serve({
+      port: 0,
+      fetch() {
+        return new Response(null, { status: 302, headers: { location: `http://127.0.0.1:${target.port}/` } })
+      },
+    })
+    try {
+      await Effect.runPromise(
+        Effect.gen(function* () {
+          const http = yield* HttpClient.HttpClient
+          yield* http.execute(
+            HttpClientRequest.get(`http://127.0.0.1:${redirector.port}/hop`).pipe(
+              HttpClientRequest.setHeaders({ cookie: "auth=secret" }),
+            ),
+          )
+        }).pipe(Effect.provide(FetchHttpClient.layer)),
+      )
+      // The redirect target must never see the session cookie.
+      expect(received).toEqual([""])
+    } finally {
+      target.stop()
+      redirector.stop()
+    }
   })
 })

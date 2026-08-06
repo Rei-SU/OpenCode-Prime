@@ -50,13 +50,34 @@ function absoluteUrl(serverUrl: string, url: string): string {
   return new URL(url, serverUrl).toString()
 }
 
+/**
+ * Refuse to send a session cookie unless the server is reachable over HTTPS.
+ * The session's server URL is normally `https://opencode.ai`, but this guard
+ * protects the transmission boundary against any future misuse (for example a
+ * user-supplied plaintext server), so the cookie never crosses the wire in the
+ * clear.
+ */
+export function assertHttps(serverUrl: string): Effect.Effect<void, BrowserSessionError> {
+  let url: URL
+  try {
+    url = new URL(serverUrl)
+  } catch {
+    return Effect.fail(new BrowserSessionError({ message: `Invalid server URL: ${serverUrl}`, kind: "replay" }))
+  }
+  return url.protocol === "https:"
+    ? Effect.void
+    : Effect.fail(new BrowserSessionError({ message: "Refusing to send a session cookie over a non-HTTPS connection", kind: "replay" }))
+}
+
 const getText = (http: HttpClient.HttpClient, url: string, headers: Record<string, string>) =>
   HttpClient.filterStatusOk(http)
     .execute(HttpClientRequest.get(url).pipe(HttpClientRequest.setHeaders(headers)))
     .pipe(
       Effect.flatMap((response) => response.text),
+      // Deliberately drop the underlying error: it may carry the request
+      // (including the session cookie header) and must never be surfaced.
       Effect.mapError(
-        (error) => new BrowserSessionError({ message: `Request failed: ${url}`, kind: "discovery", cause: error }),
+        () => new BrowserSessionError({ message: `Request failed: ${url}`, kind: "discovery" }),
       ),
     )
 
@@ -66,6 +87,7 @@ export const discoverServerFunctionId = (
   fnName: string,
 ) =>
   Effect.gen(function* () {
+    yield* assertHttps(input.serverUrl)
     const page = `${input.serverUrl}/workspace/${input.workspaceId}/go`
     const html = yield* getText(http, page, { cookie: input.cookie })
     for (const url of assetUrls(html)) {
@@ -88,6 +110,7 @@ export const replayServerFunction = (
   args: unknown[],
 ) =>
   Effect.gen(function* () {
+    yield* assertHttps(input.serverUrl)
     const request = HttpClientRequest.get(replayUrl(input.serverUrl, hash, args)).pipe(
       HttpClientRequest.setHeaders({
         "x-server-id": hash,
@@ -97,7 +120,9 @@ export const replayServerFunction = (
     )
     const response = yield* http
       .execute(request)
-      .pipe(Effect.mapError((error) => new BrowserSessionError({ message: `Replay of ${fnName} failed`, kind: "replay", cause: error })))
+      // Deliberately drop the underlying error: it may carry the request
+      // (including the session cookie header) and must never be surfaced.
+      .pipe(Effect.mapError(() => new BrowserSessionError({ message: `Replay of ${fnName} failed`, kind: "replay" })))
     if (Headers.has(response.headers, "location") || Headers.has(response.headers, "x-error")) {
       return yield* Effect.fail(
         new BrowserSessionError({ message: `Server function ${fnName} rejected the session`, kind: "replay" }),
@@ -109,13 +134,15 @@ export const replayServerFunction = (
       )
     }
     const body = yield* response.text.pipe(
-      Effect.mapError((error) => new BrowserSessionError({ message: "Failed to read server function response", kind: "decode", cause: error })),
+      Effect.mapError(
+        () => new BrowserSessionError({ message: "Failed to read server function response", kind: "decode" }),
+      ),
     )
     try {
       return decodeServerFunctionBody(body)
-    } catch (cause) {
+    } catch {
       return yield* Effect.fail(
-        new BrowserSessionError({ message: "Failed to decode server function response", kind: "decode", cause }),
+        new BrowserSessionError({ message: "Failed to decode server function response", kind: "decode" }),
       )
     }
   })

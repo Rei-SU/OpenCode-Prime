@@ -49,13 +49,19 @@ export async function findChromiumAuthCookie(
     return undefined // keychain/DPAPI unavailable for this browser
   }
   let best: BrowserCookie | undefined
-  for (const profile of profiles) {
-    try {
-      const cookie = readProfileCookie(browser, profile, key)
-      if (cookie && (!best || cookie.modified > best.modified)) best = cookie
-    } catch {
-      // locked / corrupt DB, or undecryptable value — continue
+  try {
+    for (const profile of profiles) {
+      try {
+        const cookie = readProfileCookie(browser, profile, key)
+        if (cookie && (!best || cookie.modified > best.modified)) best = cookie
+      } catch {
+        // locked / corrupt DB, or undecryptable value — continue
+      }
     }
+  } finally {
+    // The browser's cookie-encryption key is sensitive: zero it once discovery
+    // is done so it does not linger in the heap.
+    key.fill(0)
   }
   return best
 }

@@ -5,11 +5,10 @@ import { Effect, Layer, Option } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
 
 import { BrowserSession } from "../../src/browser-session"
-import { BrowserSessionRepo } from "../../src/browser-session/repo"
 import { BrowserDiscovery } from "../../src/browser-discovery"
 import { testEffect } from "../lib/effect"
 
-const it = testEffect(LayerNode.compile(LayerNode.group([BrowserSessionRepo.node])))
+const it = testEffect(LayerNode.compile(LayerNode.group([])))
 
 const noDiscovery = Layer.succeed(
   BrowserDiscovery.Service,
