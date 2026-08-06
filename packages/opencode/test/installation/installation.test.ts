@@ -1,4 +1,5 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
+import path from "node:path"
 import { makeGlobalNode } from "@opencode-ai/core/effect/app-node"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { httpClient } from "@opencode-ai/core/effect/app-node-platform"
@@ -84,6 +85,22 @@ describe("installation", () => {
           const result = yield* Installation.use.latest("curl")
           expect(result).toBe("4.0.0-beta.1")
         }),
+    )
+
+    const primeCalls: string[] = []
+    testEffect(
+      testLayer((request) => {
+        primeCalls.push(request.url)
+        return jsonResponse({ tag_name: "v0.0.0-dev-202608052319" })
+      }),
+    ).effect("reads the latest release from the opencode-prime repository", () =>
+      Effect.gen(function* () {
+        const result = yield* Installation.use.latest("curl")
+        expect(result).toBe("0.0.0-dev-202608052319")
+        expect(primeCalls).toContain(
+          "https://api.github.com/repos/Rei-SU/OpenCode-Prime/releases/latest",
+        )
+      }),
     )
 
     const npmCalls: string[] = []
@@ -236,5 +253,36 @@ describe("installation", () => {
         yield* Installation.use.upgrade("curl", "9.9.9")
       }),
     )
+  })
+
+  describe("method", () => {
+    testEffect(testLayer(() => jsonResponse({}))).effect(
+      "detects an opencode-prime install as the curl method",
+      () =>
+        Effect.gen(function* () {
+          const original = process.execPath
+          process.execPath = path.join("/home/user", ".opencode-prime", "bin", "opencode-prime")
+          try {
+            const result = yield* Installation.use.method()
+            expect(result).toBe("curl")
+          } finally {
+            process.execPath = original
+          }
+        }),
+    )
+  })
+
+  describe("getReleaseType", () => {
+    test("compares opencode-prime dev versions against each other", () => {
+      expect(
+        Installation.getReleaseType("0.0.0-dev-20260805000000", "0.0.0-dev-202608052319"),
+      ).toBe("patch")
+    })
+
+    test("never treats an upstream version as a downgrade signal for dev versions", () => {
+      // The fork only ever compares against its own dev versions; the comparison
+      // must not crash or misclassify on our version format.
+      expect(Installation.getReleaseType("0.0.0-dev-202608052319", "0.0.0-dev-202608052319")).toBe("patch")
+    })
   })
 })

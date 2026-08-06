@@ -2,7 +2,8 @@ $ErrorActionPreference = "Stop"
 
 $App = "opencode-prime"
 $Repo = if ($env:OPENCODE_PRIME_REPO) { $env:OPENCODE_PRIME_REPO } else { "Rei-SU/OpenCode-Prime" }
-$Tag = if ($env:OPENCODE_PRIME_TAG) { $env:OPENCODE_PRIME_TAG } else { "prime-dev" }
+$Version = $env:VERSION
+$Tag = $env:OPENCODE_PRIME_TAG
 
 # --- Detect platform ---------------------------------------------------------
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
@@ -13,7 +14,15 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 }
 
 $artifact = "${App}-windows-${arch}.zip"
-$url = "https://github.com/${Repo}/releases/download/${Tag}/${artifact}"
+if ($Tag) {
+    $url = "https://github.com/${Repo}/releases/download/${Tag}/${artifact}"
+}
+elseif ($Version) {
+    $url = "https://github.com/${Repo}/releases/download/v${Version}/${artifact}"
+}
+else {
+    $url = "https://github.com/${Repo}/releases/latest/download/${artifact}"
+}
 
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\opencode-prime\bin"
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null

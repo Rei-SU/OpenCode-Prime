@@ -3,7 +3,8 @@ set -euo pipefail
 
 APP=opencode-prime
 REPO="${OPENCODE_PRIME_REPO:-Rei-SU/OpenCode-Prime}"
-TAG="${OPENCODE_PRIME_TAG:-prime-dev}"
+VERSION="${VERSION:-}"
+TAG="${OPENCODE_PRIME_TAG:-}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,7 +20,8 @@ Usage: install.sh [options]
 Options:
     -h, --help              Display this help message
     -r, --repo <repo>       GitHub repository to download from (default: $REPO)
-    -t, --tag <tag>         Release tag to download (default: $TAG)
+    -v, --version <version> Install a specific release version (default: latest)
+    -t, --tag <tag>         Exact release tag to download (overrides --version)
 
 Examples:
     curl -fsSL https://raw.githubusercontent.com/Rei-SU/OpenCode-Prime/dev/install.sh | bash
@@ -34,6 +36,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         -r|--repo)
             [[ -n "${2:-}" ]] && { REPO="$2"; shift 2; } || { echo -e "${RED}Error: --repo requires a value${NC}"; exit 1; }
+            ;;
+        -v|--version)
+            [[ -n "${2:-}" ]] && { VERSION="${2#v}"; shift 2; } || { echo -e "${RED}Error: --version requires a value${NC}"; exit 1; }
             ;;
         -t|--tag)
             [[ -n "${2:-}" ]] && { TAG="$2"; shift 2; } || { echo -e "${RED}Error: --tag requires a value${NC}"; exit 1; }
@@ -81,13 +86,19 @@ if [[ "$os" == "darwin" ]]; then
 fi
 
 artifact="${APP}-${os}-${arch}${archive_ext}"
-url="https://github.com/${REPO}/releases/download/${TAG}/${artifact}"
+if [[ -n "$TAG" ]]; then
+    url="https://github.com/${REPO}/releases/download/${TAG}/${artifact}"
+elif [[ -n "$VERSION" ]]; then
+    url="https://github.com/${REPO}/releases/download/v${VERSION}/${artifact}"
+else
+    url="https://github.com/${REPO}/releases/latest/download/${artifact}"
+fi
 
 INSTALL_DIR="$HOME/.opencode-prime/bin"
 mkdir -p "$INSTALL_DIR"
 
 # --- Download ---------------------------------------------------------------
-echo -e "${MUTED}Downloading ${APP}${NC} ${TAG}"
+echo -e "${MUTED}Downloading ${APP}${NC}"
 tmp_dir="${TMPDIR:-/tmp}/opencode-prime_install_$$"
 mkdir -p "$tmp_dir"
 trap 'rm -rf "$tmp_dir"' EXIT

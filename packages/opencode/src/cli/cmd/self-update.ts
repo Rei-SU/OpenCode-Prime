@@ -5,10 +5,9 @@ import os from "node:os"
 import path from "node:path"
 import { spawn, spawnSync } from "node:child_process"
 import { InstallationVersion } from "@opencode-ai/core/installation/version"
+import { UPDATE_REPO } from "../../installation"
 import { UI } from "../ui"
 
-const REPO = "Rei-SU/OpenCode-Prime"
-const TAG = "prime-dev"
 const APP = "opencode-prime"
 
 // Matches the artifact naming contract used by install.sh / install.ps1 and
@@ -82,14 +81,14 @@ export const SelfUpdateCommand = {
     prompts.intro("Self-update")
 
     const artifact = artifactName()
-    const url = `https://github.com/${REPO}/releases/download/${TAG}/${artifact}`
+    const url = `https://github.com/${UPDATE_REPO}/releases/latest/download/${artifact}`
     const tmp = mkdtempSync(path.join(os.tmpdir(), "opencode-prime-update-"))
     try {
-      prompts.log.info(`Downloading ${artifact} from ${TAG}`)
+      prompts.log.info(`Downloading ${artifact} from the latest release`)
 
       const response = await fetch(url)
       if (!response.ok) {
-        throw new Error(`Download failed (${response.status}). Make sure the ${TAG} release has been built: ${url}`)
+        throw new Error(`Download failed (${response.status}). Make sure a release has been built: ${url}`)
       }
       const archive = path.join(tmp, artifact)
       writeFileSync(archive, Buffer.from(await response.arrayBuffer()))

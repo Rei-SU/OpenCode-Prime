@@ -27,7 +27,9 @@ export async function upgrade() {
 
   const kind = Installation.getReleaseType(InstallationVersion, latest)
 
-  if (config.autoupdate === "notify" || kind !== "patch") {
+  // Preview/dev builds (including this fork) always surface the notification
+  // instead of silently auto-replacing the running binary on launch.
+  if (config.autoupdate === "notify" || kind !== "patch" || Installation.isPreview()) {
     GlobalBus.emit("event", {
       directory: "global",
       payload: {
