@@ -52,7 +52,6 @@ jobs:
               | sed "s/^v${ESCAPED}\.P\.//" | sort -n | tail -n 1 || true)"
             NEXT="$(( ${LAST:-0} + 1 ))"
             echo "version=${BASE}.P.${NEXT}" >> "$GITHUB_OUTPUT"
-            echo "prev=${LAST:+v${BASE}.P.${LAST}}" >> "$GITHUB_OUTPUT"
           else
             echo "version=${BASE}.P-dev.$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
           fi
@@ -77,28 +76,6 @@ jobs:
             fi
           done
 
-      - name: Generate release notes
-        id: notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          NOTES="$(mktemp)"
-          PREV="${{ steps.version.outputs.prev }}"
-          if [[ -z "$PREV" ]]; then
-            PREV="$(gh release list --repo "${{ github.repository }}" --limit 2 --json tagName --jq '.[0].tagName' 2>/dev/null || true)"
-          fi
-          echo "## What's Changed" > "$NOTES"
-          echo "" >> "$NOTES"
-          if [[ -n "$PREV" ]]; then
-            git log --oneline --no-merges "$PREV"..HEAD
-          else
-            git log --oneline --no-merges | head -n 20
-          fi | sed -E 's/^[0-9a-f]+ //; s/^[a-z]+(\([^)]*\))?: *//' \
-            | sed -E 's/^/- /' \
-            | grep -v '^- $' >> "$NOTES" || true
-          echo "notes_file=$NOTES" >> "$GITHUB_OUTPUT"
-
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -107,14 +84,14 @@ jobs:
             gh release create "v${{ steps.version.outputs.version }}" \
               --target "${{ github.sha }}" \
               --title "OpenCode-Prime v${{ steps.version.outputs.version }}" \
-              --notes-file "${{ steps.notes.outputs.notes_file }}" \
+              --notes "Describe this release." \
               --repo "${{ github.repository }}"
           else
             gh release create "v${{ steps.version.outputs.version }}" \
               --target "${{ github.sha }}" \
               --title "OpenCode-Prime v${{ steps.version.outputs.version }}" \
               --prerelease \
-              --notes-file "${{ steps.notes.outputs.notes_file }}" \
+              --notes "Nightly dev build. Not intended for production use." \
               --repo "${{ github.repository }}"
           fi
 
