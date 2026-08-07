@@ -11,45 +11,15 @@ export async function upgrade() {
   const method = await Installation.method()
   const latest = await Installation.latest(method).catch(() => {})
   if (!latest) return
-
-  if (Flag.OPENCODE_ALWAYS_NOTIFY_UPDATE) {
-    GlobalBus.emit("event", {
-      directory: "global",
-      payload: {
-        type: Installation.Event.UpdateAvailable.type,
-        properties: { version: latest },
-      },
-    })
-    return
-  }
-
   if (InstallationVersion === latest) return
 
-  const kind = Installation.getReleaseType(InstallationVersion, latest)
-
-  // Preview/dev builds (including this fork) always surface the notification
-  // instead of silently auto-replacing the running binary on launch.
-  if (config.autoupdate === "notify" || kind !== "patch" || Installation.isPreview()) {
-    GlobalBus.emit("event", {
-      directory: "global",
-      payload: {
-        type: Installation.Event.UpdateAvailable.type,
-        properties: { version: latest },
-      },
-    })
-    return
-  }
-
-  if (method === "unknown") return
-  await Installation.upgrade(method, latest)
-    .then(() =>
-      GlobalBus.emit("event", {
-        directory: "global",
-        payload: {
-          type: Installation.Event.Updated.type,
-          properties: { version: latest },
-        },
-      }),
-    )
-    .catch(() => {})
+  // opencode-prime always surfaces the update dialog instead of silently
+  // auto-replacing the running binary on launch. Users opt in via the dialog.
+  GlobalBus.emit("event", {
+    directory: "global",
+    payload: {
+      type: Installation.Event.UpdateAvailable.type,
+      properties: { version: latest },
+    },
+  })
 }
