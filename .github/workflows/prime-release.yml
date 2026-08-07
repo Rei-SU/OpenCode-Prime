@@ -88,21 +88,15 @@ jobs:
           if [[ -z "$PREV" ]]; then
             PREV="$(gh release list --repo "${{ github.repository }}" --limit 2 --json tagName --jq '.[0].tagName' 2>/dev/null || true)"
           fi
-          {
-            echo "## What's Changed"
-            echo ""
-            if [[ -n "$PREV" ]]; then
-              git log --oneline --no-merges "$PREV"..HEAD
-            else
-              git log --oneline --no-merges | head -n 20
-            fi
-          } | sed -E 's/^[0-9a-f]+ //; s/^[a-z]+(\([^)]*\))?: *//' > "$NOTES.raw"
-
-          while IFS= read -r line; do
-            [[ -z "$line" ]] && continue
-            echo "- $line"
-          done < "$NOTES.raw" > "$NOTES"
-          rm -f "$NOTES.raw"
+          echo "## What's Changed" > "$NOTES"
+          echo "" >> "$NOTES"
+          if [[ -n "$PREV" ]]; then
+            git log --oneline --no-merges "$PREV"..HEAD
+          else
+            git log --oneline --no-merges | head -n 20
+          fi | sed -E 's/^[0-9a-f]+ //; s/^[a-z]+(\([^)]*\))?: *//' \
+            | sed -E 's/^/- /' \
+            | grep -v '^- $' >> "$NOTES" || true
           echo "notes_file=$NOTES" >> "$GITHUB_OUTPUT"
 
       - name: Create release
