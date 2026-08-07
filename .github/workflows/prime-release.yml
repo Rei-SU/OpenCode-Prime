@@ -52,6 +52,7 @@ jobs:
               | sed "s/^v${ESCAPED}\.P\.//" | sort -n | tail -n 1 || true)"
             NEXT="$(( ${LAST:-0} + 1 ))"
             echo "version=${BASE}.P.${NEXT}" >> "$GITHUB_OUTPUT"
+            echo "prev=${LAST:+v${BASE}.P.${LAST}}" >> "$GITHUB_OUTPUT"
           else
             echo "version=${BASE}.P-dev.$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
           fi
@@ -83,7 +84,10 @@ jobs:
         run: |
           set -euo pipefail
           NOTES="$(mktemp)"
-          PREV="$(gh release list --repo "${{ github.repository }}" --limit 2 --json tagName --jq '.[0].tagName' 2>/dev/null || true)"
+          PREV="${{ steps.version.outputs.prev }}"
+          if [[ -z "$PREV" ]]; then
+            PREV="$(gh release list --repo "${{ github.repository }}" --limit 2 --json tagName --jq '.[0].tagName' 2>/dev/null || true)"
+          fi
           {
             echo "## What's Changed"
             echo ""
