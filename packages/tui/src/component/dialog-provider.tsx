@@ -1,10 +1,11 @@
 import { createMemo, createSignal, onMount, Show } from "solid-js"
 import { useSync } from "../context/sync"
-import { map, pipe, sortBy } from "remeda"
+import { filter, map, pipe, sortBy } from "remeda"
 import { DialogSelect } from "../ui/dialog-select"
 import { useDialog } from "../ui/dialog"
 import { useSDK } from "../context/sdk"
 import { DialogPrompt } from "../ui/dialog-prompt"
+import { DialogConfirm } from "../ui/dialog-confirm"
 import { Link } from "../ui/link"
 import { useTheme } from "../context/theme"
 import { TextAttributes } from "@opentui/core"
@@ -228,6 +229,71 @@ export function createDialogProviderOptions() {
 export function DialogProvider() {
   const options = createDialogProviderOptions()
   return <DialogSelect title="Connect a provider" options={options()} />
+}
+
+export function DialogProviderDisconnect() {
+  const sync = useSync()
+  const sdk = useSDK()
+  const dialog = useDialog()
+  const toast = useToast()
+  const { theme } = useTheme()
+
+  const connectedProviders = createMemo(() => {
+    const connected = new Set(sync.data.provider_next.connected)
+    return pipe(
+      sync.data.provider_next.all,
+      filter((provider) => connected.has(provider.id)),
+      sortBy((provider) => provider.name.toLowerCase(), (provider) => provider.id),
+      map((provider) => ({
+        title: provider.name,
+        value: provider.id,
+        description: {
+          api: "API key",
+          custom: "Custom",
+          env: "Environment",
+          config: "Config",
+        }[provider.source],
+        onSelect() {
+          void disconnect(provider)
+        },
+      })),
+    )
+  })
+
+  async function disconnect(provider: { id: string; name: string }) {
+    const ok = await DialogConfirm.show(
+      dialog,
+      "Disconnect provider",
+      `Remove the saved credentials for ${provider.name}?`,
+      "disconnect",
+    )
+    if (ok !== true) return
+    const result = await sdk.client.auth.remove({ providerID: provider.id })
+    if (result.error) {
+      toast.show({
+        variant: "error",
+        title: "Disconnect failed",
+        message: JSON.stringify(result.error),
+      })
+      return
+    }
+    await sdk.client.instance.dispose()
+    await sync.bootstrap()
+    toast.show({ variant: "success", message: `Disconnected ${provider.name}` })
+    dialog.clear()
+  }
+
+  return (
+    <DialogSelect
+      title="Disconnect provider"
+      options={connectedProviders()}
+      emptyView={
+        <box paddingLeft={4} paddingRight={4} paddingTop={1}>
+          <text fg={theme.textMuted}>No providers connected</text>
+        </box>
+      }
+    />
+  )
 }
 
 interface AutoMethodProps {
