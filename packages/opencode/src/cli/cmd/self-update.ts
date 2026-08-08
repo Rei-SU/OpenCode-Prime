@@ -45,21 +45,47 @@ function replaceBinary(binary: string) {
   const dir = path.dirname(process.execPath)
   if (process.platform === "win32") {
     const staging = path.join(dir, `${APP}.new`)
+    const log = path.join(dir, `${APP}-update.log`)
     copyFileSync(binary, staging)
+    // The running .exe cannot be removed until this process exits. The helper
+    // polls for that with a generous timeout, then renames the staged binary
+    // into place. Both steps retry: Windows keeps the old file in a
+    // delete-pending state right after removal (and AV may hold a transient
+    // lock), so a single-shot Move-Item is unreliable.
     const script = [
+      "$log = $env:OP_LOG",
       "$old = $env:OP_OLD",
       "$new = $env:OP_NEW",
-      "while (Test-Path -LiteralPath $old) {",
-      "  Start-Sleep -Seconds 1",
-      "  try { Remove-Item -LiteralPath $old -Force -ErrorAction Stop } catch {}",
+      "function Log($msg) {",
+      "  try { Add-Content -LiteralPath $log -Value ('{0:o} {1}' -f (Get-Date), $msg) -ErrorAction SilentlyContinue } catch {}",
       "}",
-      "Move-Item -LiteralPath $new $old -Force",
+      "Log 'helper start'",
+      "$deadline = (Get-Date).AddSeconds(600)",
+      "$removed = $false",
+      "while (-not $removed) {",
+      "  if ((Get-Date) -gt $deadline) { Log 'timeout waiting for the running exe to be removable'; break }",
+      "  if (-not (Test-Path -LiteralPath $old)) { $removed = $true; break }",
+      "  Start-Sleep -Milliseconds 500",
+      "  try { Remove-Item -LiteralPath $old -Force -ErrorAction Stop; $removed = $true } catch { Log ('remove failed: ' + $_.Exception.Message) }",
+      "}",
+      "Start-Sleep -Milliseconds 500",
+      "$moved = $false",
+      "for ($i = 0; $i -lt 20; $i++) {",
+      "  try { Move-Item -LiteralPath $new $old -Force -ErrorAction Stop; $moved = $true; break }",
+      "  catch { Log ('move failed (attempt ' + $i + '): ' + $_.Exception.Message); Start-Sleep -Milliseconds 1000 }",
+      "}",
+      "Log ('helper done removed=' + $removed + ' moved=' + $moved)",
     ].join("\n")
     const encoded = Buffer.from(script, "utf16le").toString("base64")
     const helper = spawn(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
-      { detached: true, stdio: "ignore", env: { ...process.env, OP_OLD: process.execPath, OP_NEW: staging } },
+      {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+        env: { ...process.env, OP_OLD: process.execPath, OP_NEW: staging, OP_LOG: log },
+      },
     )
     helper.unref()
     return
