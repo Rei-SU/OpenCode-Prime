@@ -4,6 +4,11 @@ on:
   push:
     branches: [dev, main]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Explicit version to release, e.g. 1.18.14.P.1.5 (overrides the auto-incremented tag)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -39,7 +44,9 @@ jobs:
           # would label builds as upstream versions we haven't pulled yet.
           BASE="$(bun -e 'const p = await Bun.file("packages/opencode/package.json").json(); console.log(p.version)')"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
             ESCAPED="$(printf '%s' "$BASE" | sed 's/\./\\./g')"
             LAST="$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName --jq '.[].tagName' \
               | grep -E "^v${ESCAPED}\.P\.[0-9]+$" \
