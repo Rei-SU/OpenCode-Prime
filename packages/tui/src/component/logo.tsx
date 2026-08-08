@@ -1,7 +1,7 @@
 import { RGBA, TextAttributes } from "@opentui/core"
 import { For, type JSX } from "solid-js"
 import { tint, useTheme } from "../context/theme"
-import { logo } from "../logo"
+import { primeLogo } from "../logo"
 
 export function Logo() {
   const { theme } = useTheme()
@@ -48,12 +48,9 @@ export function Logo() {
 
   return (
     <box>
-      <For each={logo.left}>
-        {(line, index) => (
-          <box flexDirection="row" gap={1}>
-            <box flexDirection="row">{renderLine(line, theme.textMuted, false)}</box>
-            <box flexDirection="row">{renderLine(logo.right[index()], theme.text, true)}</box>
-          </box>
+      <For each={primeLogo.right}>
+        {(line) => (
+          <box flexDirection="row">{renderLine(line, theme.text, true)}</box>
         )}
       </For>
     </box>
