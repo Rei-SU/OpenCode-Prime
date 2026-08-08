@@ -25,6 +25,7 @@ export interface DialogSelectProps<T> {
   titleView?: JSX.Element
   placeholder?: string
   footer?: JSX.Element
+  header?: JSX.Element
   emptyView?: JSX.Element
   options: DialogSelectOption<T>[]
   flat?: boolean
@@ -593,6 +594,9 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
               placeholderColor={theme.textMuted}
             />
           </box>
+        </Show>
+        <Show when={props.header}>
+          <box paddingTop={1}>{props.header}</box>
         </Show>
       </box>
       <box flexGrow={1} flexShrink={1}>
