@@ -33,17 +33,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          BASE="$(bun -e '
-            try {
-              const r = await fetch("https://registry.npmjs.org/opencode-ai/latest", { headers: { accept: "application/json" } })
-              if (!r.ok) throw new Error("npm " + r.status)
-              const d = await r.json()
-              console.log(d.version)
-            } catch {
-              const p = await Bun.file("packages/opencode/package.json").json()
-              console.log(p.version)
-            }
-          ')"
+          # Base is the upstream version our code is actually built on, read from
+          # the synced package.json (bumped by upstream's "sync release versions"
+          # commits when we merge them). Never borrow the live npm number, which
+          # would label builds as upstream versions we haven't pulled yet.
+          BASE="$(bun -e 'const p = await Bun.file("packages/opencode/package.json").json(); console.log(p.version)')"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
           if [[ "${{ github.ref_name }}" == "main" ]]; then
             ESCAPED="$(printf '%s' "$BASE" | sed 's/\./\\./g')"
