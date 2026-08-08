@@ -298,7 +298,7 @@ export function DialogModel(props: { providerID?: string }) {
       actions={[
         {
           command: "model.dialog.provider",
-          title: connected() ? "Connect provider" : "View all providers",
+          title: connected() ? "Connect" : "View all providers",
           onTrigger() {
             dialog.replace(() => <DialogProvider />)
           },
@@ -314,7 +314,7 @@ export function DialogModel(props: { providerID?: string }) {
       ]}
       footerHints={
         showExtra() && filterProviders().length > 1
-          ? [{ title: "Filter provider", label: "ctrl+←/→", side: "right" }]
+          ? [{ title: "Filter", label: "ctrl+←/→", side: "right" }]
           : undefined
       }
       onFilter={setQuery}

@@ -527,7 +527,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   function FooterAction(action: { item: VisibleAction }) {
     if (!isActionItem(action.item))
       return (
-        <text>
+        <text wrapMode="none" flexShrink={0}>
           <span style={{ fg: theme.text }}>
             <b>{action.item.title}</b>{" "}
           </span>
@@ -541,16 +541,20 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
     return (
       <box
         flexDirection="row"
+        flexShrink={0}
         backgroundColor={active() ? theme.primary : RGBA.fromInts(0, 0, 0, 0)}
         onMouseUp={() => triggerAction(item)}
       >
         <text
           fg={disabled() ? theme.textMuted : active() ? fg : theme.text}
           attributes={active() ? TextAttributes.BOLD : undefined}
+          wrapMode="none"
         >
           {item.title}
         </text>
-        <text fg={disabled() ? theme.textMuted : active() ? fg : theme.textMuted}> {item.label}</text>
+        <text fg={disabled() ? theme.textMuted : active() ? fg : theme.textMuted} wrapMode="none" flexShrink={0}>
+          {" "}{item.label}
+        </text>
       </box>
     )
   }
