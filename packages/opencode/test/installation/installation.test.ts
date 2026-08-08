@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test"
-import path from "node:path"
 import { makeGlobalNode } from "@opencode-ai/core/effect/app-node"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { httpClient } from "@opencode-ai/core/effect/app-node-platform"
@@ -7,7 +6,6 @@ import { Effect, Layer, Stream } from "effect"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { Installation } from "../../src/installation"
-import { InstallationChannel } from "@opencode-ai/core/installation/version"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { testEffect } from "../lib/effect"
 
@@ -107,53 +105,32 @@ describe("installation", () => {
     testEffect(
       testLayer((request) => {
         npmCalls.push(request.url)
-        return jsonResponse({ version: "1.5.0" })
+        return jsonResponse({ tag_name: "v1.5.0" })
       }),
-    ).effect("reads npm versions via registry", () =>
+    ).effect("never resolves upstream npm versions for a prime install", () =>
       Effect.gen(function* () {
+        // Even when a passed install method would historically have pointed at the
+        // upstream npm registry, the fork always resolves from its own GitHub repo.
         const result = yield* Installation.use.latest("npm")
         expect(result).toBe("1.5.0")
-        expect(npmCalls).toContain(`https://registry.npmjs.org/opencode-ai/${InstallationChannel}`)
+        expect(npmCalls).not.toContain("https://registry.npmjs.org/opencode-ai/latest")
+        expect(npmCalls).toContain(
+          "https://api.github.com/repos/Rei-SU/opencode-prime/releases/latest",
+        )
       }),
     )
 
-    const bunCalls: string[] = []
-    testEffect(
-      testLayer((request) => {
-        bunCalls.push(request.url)
-        return jsonResponse({ version: "1.6.0" })
-      }),
-    ).effect("reads bun versions via registry", () =>
-      Effect.gen(function* () {
-        const result = yield* Installation.use.latest("bun")
-        expect(result).toBe("1.6.0")
-        expect(bunCalls).toContain(`https://registry.npmjs.org/opencode-ai/${InstallationChannel}`)
-      }),
+    testEffect(testLayer(() => jsonResponse({ tag_name: "v2.3.4" }))).effect(
+      "resolves scoop-style requests from the prime repo, not the upstream manifest",
+      () =>
+        Effect.gen(function* () {
+          const result = yield* Installation.use.latest("scoop")
+          expect(result).toBe("2.3.4")
+        }),
     )
 
-    const pnpmCalls: string[] = []
-    testEffect(
-      testLayer((request) => {
-        pnpmCalls.push(request.url)
-        return jsonResponse({ version: "1.7.0" })
-      }),
-    ).effect("reads pnpm versions via registry", () =>
-      Effect.gen(function* () {
-        const result = yield* Installation.use.latest("pnpm")
-        expect(result).toBe("1.7.0")
-        expect(pnpmCalls).toContain(`https://registry.npmjs.org/opencode-ai/${InstallationChannel}`)
-      }),
-    )
-
-    testEffect(testLayer(() => jsonResponse({ version: "2.3.4" }))).effect("reads scoop manifest versions", () =>
-      Effect.gen(function* () {
-        const result = yield* Installation.use.latest("scoop")
-        expect(result).toBe("2.3.4")
-      }),
-    )
-
-    testEffect(testLayer(() => jsonResponse({ d: { results: [{ Version: "3.4.5" }] } }))).effect(
-      "reads chocolatey feed versions",
+    testEffect(testLayer(() => jsonResponse({ tag_name: "v3.4.5" }))).effect(
+      "resolves chocolatey-style requests from the prime repo, not the upstream feed",
       () =>
         Effect.gen(function* () {
           const result = yield* Installation.use.latest("choco")
@@ -162,60 +139,26 @@ describe("installation", () => {
     )
 
     testEffect(
-      testLayer(
-        () => jsonResponse({ versions: { stable: "2.0.0" } }),
-        (cmd, args) => {
-          // getBrewFormula: return core formula (no tap)
-          if (cmd === "brew" && args.includes("--formula") && args.includes("anomalyco/tap/opencode")) return ""
-          if (cmd === "brew" && args.includes("--formula") && args.includes("opencode")) return "opencode"
-          return ""
-        },
-      ),
-    ).effect("reads brew formulae API versions", () =>
+      testLayer(() => jsonResponse({ tag_name: "v2.0.0" })),
+    ).effect("resolves brew-style requests from the prime repo, not the upstream formula", () =>
       Effect.gen(function* () {
         const result = yield* Installation.use.latest("brew")
         expect(result).toBe("2.0.0")
       }),
     )
-
-    const brewInfoJson = JSON.stringify({
-      formulae: [{ versions: { stable: "2.1.0" } }],
-    })
-    testEffect(
-      testLayer(
-        () => jsonResponse({}), // HTTP not used for tap formula
-        (cmd, args) => {
-          if (cmd === "brew" && args.includes("anomalyco/tap/opencode") && args.includes("--formula")) return "opencode"
-          if (cmd === "brew" && args.includes("--json=v2")) return brewInfoJson
-          return ""
-        },
-      ),
-    ).effect("reads brew tap info JSON via CLI", () =>
-      Effect.gen(function* () {
-        const result = yield* Installation.use.latest("brew")
-        expect(result).toBe("2.1.0")
-      }),
-    )
   })
 
   describe("upgrade", () => {
-    testEffect(
-      testLayer(
-        () => jsonResponse({}),
-        (cmd) => {
-          if (cmd === "npm") return { code: 1, stderr: "token=secret command output" }
-          return ""
-        },
-      ),
-    ).effect("returns sanitized typed errors for failed package upgrades", () =>
-      Effect.gen(function* () {
-        const error = yield* Effect.flip(Installation.use.upgrade("npm", "9.9.9"))
-        expect(error).toBeInstanceOf(Installation.UpgradeFailedError)
-        expect(error.stderr).toBe("Upgrade failed for npm (exit code 1).")
-        expect(error.message).toBe(error.stderr)
-        expect(error.stderr).not.toContain("secret")
-        expect(error.stderr).not.toContain("command output")
-      }),
+    testEffect(testLayer(() => jsonResponse({}))).effect(
+      "rejects package-manager upgrades instead of installing the upstream package",
+      () =>
+        Effect.gen(function* () {
+          // opencode-prime only upgrades via its own curl installer. Asking for an
+          // npm upgrade must fail rather than pull in the upstream opencode-ai.
+          const error = yield* Effect.flip(Installation.use.upgrade("npm", "9.9.9"))
+          expect(error).toBeInstanceOf(Installation.UpgradeFailedError)
+          expect(error.stderr).toBe("Upgrade failed for npm.")
+        }),
     )
 
     testEffect(
@@ -257,17 +200,14 @@ describe("installation", () => {
 
   describe("method", () => {
     testEffect(testLayer(() => jsonResponse({}))).effect(
-      "detects an opencode-prime install as the curl method",
+      "always reports the curl method for an opencode-prime install",
       () =>
         Effect.gen(function* () {
-          const original = process.execPath
-          process.execPath = path.join("/home/user", ".opencode-prime", "bin", "opencode-prime")
-          try {
-            const result = yield* Installation.use.method()
-            expect(result).toBe("curl")
-          } finally {
-            process.execPath = original
-          }
+          // opencode-prime is only distributed via install.sh / install.ps1, so the
+          // install method is always "curl" regardless of exec path or whether the
+          // upstream opencode-ai is also present on the machine.
+          const result = yield* Installation.use.method()
+          expect(result).toBe("curl")
         }),
     )
   })
