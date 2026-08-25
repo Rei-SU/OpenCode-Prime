@@ -6,6 +6,7 @@ import { Effect, Layer, Stream } from "effect"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { Installation } from "../../src/installation"
+import { artifactUrl } from "../../src/installation/artifact"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
 import { testEffect } from "../lib/effect"
 
@@ -161,41 +162,69 @@ describe("installation", () => {
         }),
     )
 
-    testEffect(
-      testLayer(
-        () => new Response("install script with token=secret", { status: 200 }),
-        (cmd, args) => {
-          if (cmd === "bash" && args[0] === "--version") return "GNU bash"
-          if (cmd === "bash" || cmd === "sh") return { code: 1, stderr: "script output with token=secret" }
-          return ""
-        },
-      ),
-    ).effect("returns sanitized typed errors when the curl install script fails", () =>
-      Effect.gen(function* () {
-        const error = yield* Effect.flip(Installation.use.upgrade("curl", "9.9.9"))
-        expect(error).toBeInstanceOf(Installation.UpgradeFailedError)
-        expect(error.stderr).toBe("Upgrade failed for curl (exit code 1).")
-        expect(error.message).toBe(error.stderr)
-        expect(error.stderr).not.toContain("secret")
-        expect(error.stderr).not.toContain("script output")
-      }),
-    )
+    // The shell-installer path only runs on POSIX; Windows swaps the release
+    // artifact directly (see artifact.ts) and must never touch bash.
+    if (process.platform !== "win32") {
+      testEffect(
+        testLayer(
+          () => new Response("install script with token=secret", { status: 200 }),
+          (cmd, args) => {
+            if (cmd === "bash" && args[0] === "--version") return "GNU bash"
+            if (cmd === "bash" || cmd === "sh") return { code: 1, stderr: "script output with token=secret" }
+            return ""
+          },
+        ),
+      ).effect("returns sanitized typed errors when the curl install script fails", () =>
+        Effect.gen(function* () {
+          const error = yield* Effect.flip(Installation.use.upgrade("curl", "9.9.9"))
+          expect(error).toBeInstanceOf(Installation.UpgradeFailedError)
+          expect(error.stderr).toBe("Upgrade failed for curl (exit code 1).")
+          expect(error.message).toBe(error.stderr)
+          expect(error.stderr).not.toContain("secret")
+          expect(error.stderr).not.toContain("script output")
+        }),
+      )
 
-    testEffect(
-      testLayer(
-        () => new Response("install script", { status: 200 }),
-        (cmd, args) => {
-          if (cmd === "bash" && args[0] === "--version") return { code: 1, stderr: "missing" }
-          if (cmd === "bash") return { code: 1, stderr: "should not execute installer with bash" }
-          if (cmd === "sh") return "ok"
-          return ""
-        },
-      ),
-    ).effect("falls back to sh when bash is unavailable during curl upgrade", () =>
-      Effect.gen(function* () {
-        yield* Installation.use.upgrade("curl", "9.9.9")
-      }),
-    )
+      testEffect(
+        testLayer(
+          () => new Response("install script", { status: 200 }),
+          (cmd, args) => {
+            if (cmd === "bash" && args[0] === "--version") return { code: 1, stderr: "missing" }
+            if (cmd === "bash") return { code: 1, stderr: "should not execute installer with bash" }
+            if (cmd === "sh") return "ok"
+            return ""
+          },
+        ),
+      ).effect("falls back to sh when bash is unavailable during curl upgrade", () =>
+        Effect.gen(function* () {
+          yield* Installation.use.upgrade("curl", "9.9.9")
+        }),
+      )
+    }
+  })
+
+  describe("artifactUrl", () => {
+    const windows = process.platform === "win32"
+    const ext = process.platform === "linux" ? "tar.gz" : "zip"
+    const platform = windows ? "windows" : process.platform
+    const arch = process.arch === "arm64" || process.arch === "x64" ? process.arch : "x64"
+
+    test("points at the latest release download by default", () => {
+      expect(artifactUrl("Rei-SU/opencode-prime")).toBe(
+        `https://github.com/Rei-SU/opencode-prime/releases/latest/download/opencode-prime-${platform}-${arch}.${ext}`,
+      )
+    })
+
+    test("pins a specific release tag when a target is given", () => {
+      expect(artifactUrl("Rei-SU/opencode-prime", "1.18.22.P.1")).toBe(
+        `https://github.com/Rei-SU/opencode-prime/releases/download/v1.18.22.P.1/opencode-prime-${platform}-${arch}.${ext}`,
+      )
+    })
+
+    test("never resolves to the shell installer on windows", () => {
+      if (!windows) return
+      expect(artifactUrl("Rei-SU/opencode-prime")).not.toContain("install.sh")
+    })
   })
 
   describe("method", () => {

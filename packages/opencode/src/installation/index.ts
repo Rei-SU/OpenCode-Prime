@@ -11,6 +11,7 @@ import { makeRuntime } from "@opencode-ai/core/effect/runtime"
 import semver from "semver"
 import { InstallationChannel, InstallationVersion } from "@opencode-ai/core/installation/version"
 import { InstallationEvent } from "@opencode-ai/schema/installation-event"
+import { installArtifact } from "./artifact"
 
 export type Method = "curl" | "npm" | "yarn" | "pnpm" | "bun" | "brew" | "scoop" | "choco" | "unknown"
 
@@ -169,6 +170,21 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
         // what a prime install wants.
         if (m !== "curl") {
           return yield* new UpgradeFailedError({ stderr: upgradeFailure(m) })
+        }
+        // Windows must never use the shell installer: piping install.sh through
+        // an available bash (WSL/Git Bash) "succeeds" while installing into the
+        // wrong platform, leaving the real Windows exe untouched — which made
+        // the update prompt repeat forever. Windows swaps the release artifact
+        // directly instead.
+        if (process.platform === "win32") {
+          const installed = yield* Effect.tryPromise({
+            try: () => installArtifact({ repo: UPDATE_REPO, target }),
+            catch: (err) =>
+              new UpgradeFailedError({ stderr: err instanceof Error ? err.message : String(err) }),
+          })
+          yield* Effect.logInfo("upgraded", { method: m, target: installed.version })
+          yield* text([process.execPath, "--version"])
+          return
         }
         const upgradeResult = yield* upgradeCurl(target)
         if (upgradeResult.code !== 0) {
